@@ -5,12 +5,14 @@ APP_PORT=80
 BRANCH=master
 ENV=production
 
-PWD=`pwd`
 if [ -z "$2" ]; then
-	ENV=production
+  ENV=production
 else
-	ENV=$2
+  ENV=$2
 fi
+
+PWD=`pwd`
+source "$PWD/meteoric.config.sh"
 source "$PWD/meteoric.config.$ENV.sh"
 
 if [ -z "$GIT_URL" ]; then
@@ -23,7 +25,7 @@ fi
 # You should modify your meteoric.config.sh file instead.
 # 
 USER_DIR=/home/$APP_USER
-APP_DIR=$USER_DIR/$ENV/$APP_NAME
+APP_DIR=$USER_DIR/$ENV/source
 ROOT_URL=http://$APP_HOST
 MONGO_URL=mongodb://localhost:27017/$APP_NAME-$ENV
 
@@ -36,12 +38,13 @@ else
 fi
 
 if [ -z "$EC2_PEM_FILE" ]; then
-	SSH_HOST="$APP_USER@$APP_HOST" SSH_OPT=""
+	SSH_HOST="$SUDO_USER@$APP_HOST" SSH_OPT="-i $SSH_IDENTITY"
 else
 	SSH_HOST="ubuntu@$APP_HOST" SSH_OPT="-i $EC2_PEM_FILE"
 fi
 
-
+SSH_CMD="ssh $SSH_OPT $SSH_HOST"
+UC="sudo -u $APP_USER"
 
 SETUP="
 sudo apt-get install software-properties-common;
@@ -56,19 +59,25 @@ sudo npm install -g meteorite;
 "
 
 INIT="
-sudo mkdir -p $APP_DIR;
+$UC mkdir -p $APP_DIR;
 cd $APP_DIR;
-sudo git clone $GIT_URL .;
+$UC git clone $GIT_URL .;
+$UC git checkout $BRANCH;
+export MONGO_URL=$MONGO_URL;
+export ROOT_URL=$ROOT_URL;
+export PORT=$APP_PORT;
+$METEOR_CMD $METEOR_OPTIONS;
 "
 
 DEPLOY="
 cd $APP_DIR;
-git checkout $BRANCH;
-git pull origin $BRANCH;
-$METEOR_CMD bundle ../bundle.tgz $METEOR_OPTIONS;
+$UC git checkout $BRANCH;
+$UC git pull origin $BRANCH;
+sudo $METEOR_CMD bundle ../bundle.tgz $METEOR_OPTIONS;
 cd ..;
-tar -zxvf bundle.tgz;
-rm bundle.tgz;
+$UC tar -zxvf bundle.tgz;
+sudo rm bundle.tgz;
+forever restart bundle/main.js;
 "
 
 RUN="
@@ -80,6 +89,16 @@ export PORT=$APP_PORT;
 forever start bundle/main.js;
 "
 
+TEST="
+cd $APP_DIR;
+ls -la;
+"
+
+CONNECT="
+su $APP_USER;
+cd ~;
+"
+
 case "$1" in
 info)
 	cat <<ENDCAT
@@ -87,7 +106,7 @@ Available info:
 
 APP_NAME   - $APP_NAME
 ENV        - $ENV
-SSH_HOST   - $SSH_HOST
+SSH_CMD    - $SSH_CMD
 USER_DIR   - $USER_DIR
 APP_DIR    - $APP_DIR
 ROOT_URL   - $ROOT_URL
@@ -97,18 +116,34 @@ BRANCH     - $BRANCH
 MONGO_URL  - $MONGO_URL
 ENDCAT
 	;;
+connect)
+  ssh $SSH_OPT $SSH_HOST $CONNECT
+  ;;
 setup)
-	ssh $SSH_OPT $SSH_HOST $SETUP
-	;;
+  $SSH_CMD EXEC=$SETUP 'bash -s' <<'ENDSSH'
+$EXEC
+ENDSSH
+  ;;
 init)
-	ssh $SSH_OPT $SSH_HOST $INIT
-	;;
+  $SSH_CMD EXEC=$INIT 'bash -s' <<'ENDSSH'
+$EXEC
+ENDSSH
+  ;;
 deploy)
-	ssh $SSH_OPT $SSH_HOST $DEPLOY
-	;;
+  $SSH_CMD EXEC=$DEPLOY 'bash -s' <<'ENDSSH'
+$EXEC
+ENDSSH
+  ;;
 run)
-	ssh $SSH_OPT $SSH_HOST $RUN
-	;;
+  $SSH_CMD EXEC=$RUN 'bash -s' <<'ENDSSH'
+$EXEC
+ENDSSH
+  ;;
+test)
+  $SSH_CMD EXEC=$TEST 'bash -s' <<'ENDSSH'
+$EXEC
+ENDSSH
+  ;;
 *)
 	cat <<ENDCAT
 meteoric [action]
