@@ -1,8 +1,9 @@
-#!/bin/bash44
+#!/bin/bash
 
 # defaults
 APP_PORT=80
 BRANCH=master
+ENV=production
 
 PWD=`pwd`
 if [ -z "$2" ]; then
@@ -22,9 +23,9 @@ fi
 # You should modify your meteoric.config.sh file instead.
 # 
 USER_DIR=/home/$APP_USER
-APP_DIR = $USER_DIR/$ENV/$APP_NAME
+APP_DIR=$USER_DIR/$ENV/$APP_NAME
 ROOT_URL=http://$APP_HOST
-MONGO_URL=mongodb://localhost:27017/$APP_NAME
+MONGO_URL=mongodb://localhost:27017/$APP_NAME-$ENV
 
 if $METEORITE; then
 	METEOR_CMD=mrt
@@ -80,6 +81,22 @@ forever start bundle/main.js;
 "
 
 case "$1" in
+info)
+	cat <<ENDCAT
+Available info:
+
+APP_NAME   - $APP_NAME
+ENV        - $ENV
+SSH_HOST   - $SSH_HOST
+USER_DIR   - $USER_DIR
+APP_DIR    - $APP_DIR
+ROOT_URL   - $ROOT_URL
+APP_PORT   - $APP_PORT
+GIT_URL    - $GIT_URL
+BRANCH     - $BRANCH
+MONGO_URL  - $MONGO_URL
+ENDCAT
+	;;
 setup)
 	ssh $SSH_OPT $SSH_HOST $SETUP
 	;;
@@ -98,10 +115,11 @@ meteoric [action]
 
 Available actions:
 
+info   - show all info of this setup
 setup   - Install a meteor environment on a fresh Ubuntu server
 init    - Initialize your app
 deploy  - Deploy the app to the server
-run  		- Run the app
+run     - Run the app
 ENDCAT
 	;;
 esac
