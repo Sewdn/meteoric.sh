@@ -14,11 +14,23 @@ You may need to `sudo` in order for the script to symlink `meteoric` to your `/u
 
 ## How to use
 
-Create a conf file named `meteoric.config.sh` in your project's folder, setting the following environment variables:
+Create a conf file named `meteoric.config.sh` and a conf file for each environment `meteoric.config.[env].sh` in your project's folder, setting the following environment variables:
 
 ```bash
+# username of the root user
+SUDO_USER=root
+
+# your local key to provide access for the root user
+SSH_IDENTITY=~/.ssh/id_dsa
+
+# the remote user owning the project's source
+APP_USER=microscope
+
 # IP or URL of the server you want to deploy to
 APP_HOST=example.com
+
+# The port your server will listen to 'default: 80'
+APP_PORT=8082
 
 # Comment this if your host is not an EC2 instance
 EC2_PEM_FILE=~/.ssh/your-aws-certif.pem
@@ -26,19 +38,29 @@ EC2_PEM_FILE=~/.ssh/your-aws-certif.pem
 # What's your project's Git repo?
 GIT_URL=git://github.com/SachaG/Microscope.git
 
+# the git branch to use for this deployment
+BRANCH=develop
+
 # Does your project use meteorite, or plain meteor?
 METEORITE=true
 
 # What's your app name?
 APP_NAME=microscope
 ```
-
 Then just run:
 
 ```bash
-$ meteoric setup
+# setup the server with the needed software stack (nodejs, npm, mongodb)
+$ meteoric setup develop
 
-$ meteoric deploy
+# initialize your environment: setup the directories, clone your repo, do a first meteor run to update all dependencies
+$ meteoric init develop
+
+# run your server (using forever)
+$ meteoric run develop
+
+# update your source to the latest version, regenerate the bundle and restart the server
+$ meteoric deploy develop
 ```
 
 ## Tested on
