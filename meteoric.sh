@@ -1,12 +1,19 @@
-#!/bin/bash
-ENV=production
+#!/bin/bash44
+
+# defaults
 APP_PORT=80
 BRANCH=master
+
 PWD=`pwd`
-source "$PWD/meteoric.config.sh"
+if [ -z "$2" ]; then
+	ENV=production
+else
+	ENV=$2
+fi
+source "$PWD/meteoric.config.$ENV.sh"
 
 if [ -z "$GIT_URL" ]; then
-	echo "You need to create a conf file named meteoric.config.sh"
+	echo "You need to create a conf file for each environment named meteoric.config.[env].sh"
 	exit 1
 fi
 
