@@ -1,5 +1,7 @@
 #!/bin/bash
-
+ENV=production
+APP_PORT=80
+BRANCH=master
 PWD=`pwd`
 source "$PWD/meteoric.config.sh"
 
@@ -12,8 +14,8 @@ fi
 # You usually don't need to change anything here –
 # You should modify your meteoric.config.sh file instead.
 # 
-
-APP_DIR=/home/meteor
+USER_DIR=/home/$APP_USER
+APP_DIR = $USER_DIR/$ENV/$APP_NAME
 ROOT_URL=http://$APP_HOST
 MONGO_URL=mongodb://localhost:27017/$APP_NAME
 
@@ -26,7 +28,7 @@ else
 fi
 
 if [ -z "$EC2_PEM_FILE" ]; then
-	SSH_HOST="root@$APP_HOST" SSH_OPT=""
+	SSH_HOST="$APP_USER@$APP_HOST" SSH_OPT=""
 else
 	SSH_HOST="ubuntu@$APP_HOST" SSH_OPT="-i $EC2_PEM_FILE"
 fi
@@ -43,34 +45,45 @@ node --version;
 sudo npm install -g forever;
 curl https://install.meteor.com | /bin/sh;
 sudo npm install -g meteorite;
+"
+
+INIT="
 sudo mkdir -p $APP_DIR;
 cd $APP_DIR;
-pwd;
-sudo git clone $GIT_URL $APP_NAME;
+sudo git clone $GIT_URL .;
 "
 
 DEPLOY="
 cd $APP_DIR;
-cd $APP_NAME;
-sudo git pull;
-sudo $METEOR_CMD bundle ../bundle.tgz $METEOR_OPTIONS;
+git checkout $BRANCH;
+git pull origin $BRANCH;
+$METEOR_CMD bundle ../bundle.tgz $METEOR_OPTIONS;
 cd ..;
-sudo tar -zxvf bundle.tgz;
-export MONGO_URL=$MONGO_URL;
-export ROOT_URL=$ROOT_URL;
-export PORT=80;
-sudo forever start bundle/main.js;
+tar -zxvf bundle.tgz;
+rm bundle.tgz;
 "
 
-
-
+RUN="
+cd $APP_DIR;
+cd ..;
+export MONGO_URL=$MONGO_URL;
+export ROOT_URL=$ROOT_URL;
+export PORT=$APP_PORT;
+forever start bundle/main.js;
+"
 
 case "$1" in
 setup)
 	ssh $SSH_OPT $SSH_HOST $SETUP
 	;;
+init)
+	ssh $SSH_OPT $SSH_HOST $INIT
+	;;
 deploy)
 	ssh $SSH_OPT $SSH_HOST $DEPLOY
+	;;
+run)
+	ssh $SSH_OPT $SSH_HOST $RUN
 	;;
 *)
 	cat <<ENDCAT
@@ -79,7 +92,9 @@ meteoric [action]
 Available actions:
 
 setup   - Install a meteor environment on a fresh Ubuntu server
+init    - Initialize your app
 deploy  - Deploy the app to the server
+run  		- Run the app
 ENDCAT
 	;;
 esac
