@@ -53,6 +53,9 @@ Then just run:
 # list all possible commands
 $ meteoric
 
+# list all environment configuration variables and their values
+$ meteoric info develop
+
 # setup the server with the needed software stack (nodejs, npm, mongodb)
 $ meteoric setup develop
 
